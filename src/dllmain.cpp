@@ -251,16 +251,24 @@ void Movies()
     if (bFixMovies) 
     {
         // Movies
-        std::uint8_t* MovieSizeScanResult = Memory::PatternScan(exeModule, "74 ?? E8 ?? ?? ?? ?? 0F 28 ?? E8 ?? ?? ?? ?? F3 0F ?? ?? 48 83 ?? ?? ?? 00");
+        std::uint8_t* MovieSizeScanResult = Memory::PatternScan(exeModule, "F3 0F ?? ?? ?? ?? 48 8D ?? ?? ?? 48 89 ?? ?? ?? 48 8D ?? ?? ?? C7 ?? ?? ?? 00 00 80 3F");
         std::uint8_t* MovieAspectScanResult = Memory::PatternScan(exeModule, "F3 0F ?? ?? ?? ?? ?? ?? F3 0F ?? ?? ?? ?? F3 0F ?? ?? ?? ?? E8 ?? ?? ?? ?? 0F ?? ?? ?? 4D ?? ??");
         if (MovieSizeScanResult && MovieAspectScanResult) {
             spdlog::info("Movies: Size: Address is {:s}+{:x}", sExeName.c_str(), MovieSizeScanResult - (std::uint8_t*)exeModule);
-            Memory::PatchBytes(MovieSizeScanResult, "\xEB", 1);
-            spdlog::info("Movies: Size: Patched instruction.");
+            static SafetyHookMid MovieSizeMidHook{};
+            MovieSizeMidHook = safetyhook::create_mid(MovieSizeScanResult,
+            [](SafetyHookContext& ctx) {
+                 if (fAspectRatio > fNativeAspect)
+                    ctx.xmm1.f32[0] = 1.00f;
+            });
 
             spdlog::info("Movies: Aspect Ratio: Address is {:s}+{:x}", sExeName.c_str(), MovieAspectScanResult - (std::uint8_t*)exeModule);
-            Memory::PatchBytes(MovieAspectScanResult, "\x0F\x57\xC0\x90\x90\x90\x90\x90", 8);
-            spdlog::info("Movies: Aspect Ratio: Patched instruction.");
+            static SafetyHookMid MovieAspectMidHook{};
+            MovieAspectMidHook = safetyhook::create_mid(MovieAspectScanResult + 0x8,
+            [](SafetyHookContext& ctx) {
+                  if (fAspectRatio > fNativeAspect)
+                    ctx.xmm0.f32[0] = 0.00f;
+            });
 
         }
         else {
