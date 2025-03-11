@@ -29,7 +29,7 @@ std::string sExeName;
 // Aspect ratio / FOV / HUD
 std::pair DesktopDimensions = { 0,0 };
 const float fPi = 3.1415926535f;
-const float fNativeAspect = (16.00f / 9.00f);
+const float fNativeAspect = 16.00f / 9.00f;
 float fAspectRatio;
 float fAspectMultiplier;
 float fHUDWidth;
@@ -44,8 +44,11 @@ int iCustomResY;
 bool bFixMovies;
 
 // Variables
+const float fLetterboxAspect = 2.35f;
 int iCurrentResX;
 int iCurrentResY;
+std::string sMovieName;
+bool bLetterboxedMovie = false;
 
 void CalculateAspectRatio(bool bLog)
 {
@@ -250,6 +253,34 @@ void Movies()
 {
     if (bFixMovies) 
     {
+        // Very cool naming scheme
+        static std::vector<std::string> sNonLetterboxedMovies =
+        {
+            "02D0FA5FDB4FA4FEA5D0C1CAAEF8D6CE260EADE39CC753AB7D0C376B55012958",
+            "388CDBB2F103BE34D9ECF75D5038A7AF5406F9B40250C3B569D167D851C18189",
+            "68C0955A422BF998BB1647D704DBFDAF02C1EAEB5F21CA568BC9B43EB53EBF66",
+            "F11D39AF90D578381099BAE062CB35BE9BDBB339B67AAAF5CBC48FBFE5F59A37",
+        };
+
+        // Movie name
+        std::uint8_t* MovieNameScanResult = Memory::PatternScan(exeModule, "48 8D ?? ?? ?? E8 ?? ?? ?? ?? B8 01 00 00 00 8B ?? 87 ?? ?? 8B ??");
+        if (MovieNameScanResult) {
+            spdlog::info("Movies: Name: Address is {:s}+{:x}", sExeName.c_str(), MovieNameScanResult - (std::uint8_t*)exeModule);
+            static SafetyHookMid MovieNameMidHook{};
+            MovieNameMidHook = safetyhook::create_mid(MovieNameScanResult,
+            [](SafetyHookContext& ctx) {
+                if (ctx.rcx) {
+                    // Grab movie filename
+                    sMovieName = *(char**)ctx.rcx;
+
+                    // Check if it is in the non-letterboxed list
+                    bLetterboxedMovie = std::ranges::none_of(sNonLetterboxedMovies, [&](const std::string& movie) {
+                        return sMovieName.find(movie) != std::string::npos;
+                    });
+                }
+            });
+        }
+
         // Movies
         std::uint8_t* MovieSizeScanResult = Memory::PatternScan(exeModule, "F3 0F ?? ?? ?? ?? 48 8D ?? ?? ?? 48 89 ?? ?? ?? 48 8D ?? ?? ?? C7 ?? ?? ?? 00 00 80 3F");
         std::uint8_t* MovieAspectScanResult = Memory::PatternScan(exeModule, "F3 0F ?? ?? ?? ?? ?? ?? F3 0F ?? ?? ?? ?? F3 0F ?? ?? ?? ?? E8 ?? ?? ?? ?? 0F ?? ?? ?? 4D ?? ??");
@@ -257,19 +288,26 @@ void Movies()
             spdlog::info("Movies: Size: Address is {:s}+{:x}", sExeName.c_str(), MovieSizeScanResult - (std::uint8_t*)exeModule);
             static SafetyHookMid MovieSizeMidHook{};
             MovieSizeMidHook = safetyhook::create_mid(MovieSizeScanResult,
-            [](SafetyHookContext& ctx) {
-                 if (fAspectRatio > fNativeAspect)
-                    ctx.xmm1.f32[0] = 1.00f;
+            [](SafetyHookContext& ctx) { 
+                if (fAspectRatio > fNativeAspect) {
+                    if (bLetterboxedMovie)
+                        ctx.xmm1.f32[0] = fLetterboxAspect / fNativeAspect;
+                    else
+                        ctx.xmm1.f32[0] = 1.00f;
+                }
             });
 
             spdlog::info("Movies: Aspect Ratio: Address is {:s}+{:x}", sExeName.c_str(), MovieAspectScanResult - (std::uint8_t*)exeModule);
             static SafetyHookMid MovieAspectMidHook{};
-            MovieAspectMidHook = safetyhook::create_mid(MovieAspectScanResult + 0x8,
+            MovieAspectMidHook = safetyhook::create_mid(MovieAspectScanResult - 0x8,
             [](SafetyHookContext& ctx) {
-                  if (fAspectRatio > fNativeAspect)
-                    ctx.xmm0.f32[0] = 0.00f;
+                if (fAspectRatio > fNativeAspect) {
+                    if (bLetterboxedMovie)
+                        ctx.xmm1.f32[0] = fLetterboxAspect;
+                    else
+                        ctx.xmm1.f32[0] = fNativeAspect;
+                }  
             });
-
         }
         else {
             spdlog::error("Movies: Size: Pattern scan(s) failed.");
