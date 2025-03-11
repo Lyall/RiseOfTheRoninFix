@@ -19,7 +19,9 @@
 - Open **`RiseOfTheRoninFix.ini`** to adjust settings.
 
 ## Screenshots
-- 
+| ![ezgif-8ed5bbb9dca544](https://github.com/user-attachments/assets/99083863-1ea5-4cd8-92fd-102a604f37b1) |
+|:--:|
+| Fixed FMV Cropping |
 
 ## Credits
 [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader) for ASI loading. <br />
