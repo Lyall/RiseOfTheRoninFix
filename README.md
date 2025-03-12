@@ -3,9 +3,11 @@
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/W7W01UAI9)<br />
 [![Github All Releases](https://img.shields.io/github/downloads/Lyall/RiseOfTheRoninFix/total.svg)](https://github.com/Lyall/RiseOfTheRoninFix/releases)
 
-**RiseOfTheRoninFix** is an ASI plugin for Rise of the Ronin that:
-- Adds support for custom resolutions.
-- Fixes cropped FMVs at ultrawide resolutions.
+**RiseOfTheRoninFix** is an ASI plugin for Rise of the Ronin that can:
+- Add support for custom resolutions.
+- Adjust gameplay FOV.
+- Fix cropped FMV sequences.
+- Fix various issues related to running unsupported aspect ratios.
 
 ## Installation  
 - Download the latest release from [here](https://github.com/Lyall/RiseOfTheRoninFix/releases). 
