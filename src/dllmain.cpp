@@ -279,20 +279,20 @@ void FOV()
 
     if (bFixFOV) 
     {
-        // Cutscene FOV
+        // Cutscene camera
         std::uint8_t* CutsceneFOVScanResult = Memory::PatternScan(exeModule, "E8 ?? ?? ?? ?? 83 ?? 01 75 ?? F3 0F ?? ?? ?? ?? ?? ?? EB ??");
         std::uint8_t* CutsceneCameraPositionScanResult = Memory::PatternScan(exeModule, "74 ?? 83 ?? FF E8 ?? ?? ?? ?? EB ?? E8 ?? ?? ?? ?? 84 ?? 74 ?? E8 ?? ?? ?? ??");
         if (CutsceneFOVScanResult && CutsceneCameraPositionScanResult) {
-            spdlog::info("Cutscene FOV: Address is {:s}+{:x}", sExeName.c_str(), CutsceneFOVScanResult - (std::uint8_t*)exeModule);
+            spdlog::info("Cutscene Camera: FOV: Address is {:s}+{:x}", sExeName.c_str(), CutsceneFOVScanResult - (std::uint8_t*)exeModule);
             Memory::PatchBytes(CutsceneFOVScanResult + 0x8, "\x90\x90", 2);
-            spdlog::info("Cutscene FOV: Patched instruction.");
+            spdlog::info("Cutscene Camera: FOV: Patched instruction.");
 
-            spdlog::info("Cutscene FOV: Position: Address is {:s}+{:x}", sExeName.c_str(), CutsceneCameraPositionScanResult - (std::uint8_t*)exeModule);
+            spdlog::info("Cutscene Camera: Position: Address is {:s}+{:x}", sExeName.c_str(), CutsceneCameraPositionScanResult - (std::uint8_t*)exeModule);
             Memory::PatchBytes(CutsceneCameraPositionScanResult, "\xEB\x53", 2);
-            spdlog::info("Cutscene FOV: Position: Patched instruction.");
+            spdlog::info("Cutscene Camera: Position: Patched instruction.");
         }
         else {
-            spdlog::error("Cutscene FOV: Pattern scan(s) failed.");
+            spdlog::error("Cutscene Camera: Pattern scan(s) failed.");
         }
     }
    
