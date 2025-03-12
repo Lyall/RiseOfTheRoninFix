@@ -199,6 +199,10 @@ void CustomResolution()
             // Overwrite 7680x4320
             Memory::Write(ResolutionListScanResult, iCustomResX);
             Memory::Write(ResolutionListScanResult + 0x4, iCustomResY);
+
+            Memory::Write(ResolutionListScanResult + 0x70, iCustomResX); // Not exactly sure what this second set is used for but may as well change it.
+            Memory::Write(ResolutionListScanResult + 0x74, iCustomResY);
+            
             spdlog::info("Resolution List: Replaced 7680x4320 with {}x{}", iCustomResX, iCustomResY);
         }
         else {
