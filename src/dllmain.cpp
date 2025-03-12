@@ -45,6 +45,8 @@ float fGameplayFOVMulti;
 bool bFixFOV;
 bool bFixHUD;
 bool bFixMovies;
+bool bAdjustFramerate;
+int iFramerateCap;
 
 // Variables
 const float fLetterboxAspect = 2.35f;
@@ -165,6 +167,8 @@ void Configuration()
     inipp::get_value(ini.sections["Fix FOV"], "Enabled", bFixFOV);
     inipp::get_value(ini.sections["Fix HUD"], "Enabled", bFixHUD);
     inipp::get_value(ini.sections["Fix Movies"], "Enabled", bFixMovies);
+    inipp::get_value(ini.sections["Framerate"], "Enabled", bAdjustFramerate);
+    inipp::get_value(ini.sections["Framerate"], "FramerateCap", iFramerateCap);
 
     // Log ini parse
     spdlog_confparse(bCustomRes);
@@ -174,6 +178,8 @@ void Configuration()
     spdlog_confparse(bFixFOV);
     spdlog_confparse(bFixHUD);
     spdlog_confparse(bFixMovies);
+    spdlog_confparse(bAdjustFramerate);
+    spdlog_confparse(iFramerateCap);
 
     spdlog::info("----------");
 }
@@ -202,7 +208,7 @@ void CustomResolution()
 
             Memory::Write(ResolutionListScanResult + 0x70, iCustomResX); // Not exactly sure what this second set is used for but may as well change it.
             Memory::Write(ResolutionListScanResult + 0x74, iCustomResY);
-            
+
             spdlog::info("Resolution List: Replaced 7680x4320 with {}x{}", iCustomResX, iCustomResY);
         }
         else {
@@ -412,6 +418,26 @@ void HUD()
     } 
 }
 
+void Framerate()
+{
+    if (bAdjustFramerate) 
+    {
+        // Framerate cap
+        std::uint8_t* FramerateCapScanResult = Memory::PatternScan(exeModule, "48 83 ?? 03 73 ?? 8B ?? ?? EB ?? 8B ?? 48 8B ?? ?? ?? 48 33 ?? E8 ?? ?? ?? ?? 48 83 ?? ?? C3");
+        if (FramerateCapScanResult) {
+            spdlog::info("Framerate: Cap: Address is {:s}+{:x}", sExeName.c_str(), FramerateCapScanResult - (std::uint8_t*)exeModule);
+            static SafetyHookMid FramerateCapMidHook{};
+            FramerateCapMidHook = safetyhook::create_mid(FramerateCapScanResult + 0xD,
+            [](SafetyHookContext& ctx) {
+                ctx.rax = iFramerateCap;
+            });       
+        }
+        else {
+            spdlog::error("Framerate: Cap: Pattern scan failed.");
+        }
+    }
+}
+
 DWORD __stdcall Main(void*)
 {
     Logging();
@@ -421,6 +447,7 @@ DWORD __stdcall Main(void*)
     FOV();
     Movies();
     HUD();
+    Framerate();
 
     return true;
 }
