@@ -367,28 +367,43 @@ void HUD()
 {
     if (bFixHUD) 
     {
-        // HUD size
+        // Cropped loading screen artwork
+        std::uint8_t* LoadingArtworkScanResult = Memory::PatternScan(exeModule, "0F 28 ?? 41 ?? ?? C1 ?? ?? 66 ?? ?? ?? ?? F3 0F ?? ?? 66 ?? ?? ?? ?? 40 ?? ?? 74 ??");
+        if (LoadingArtworkScanResult ) {
+            spdlog::info("HUD: Loading Artwork: Address is {:s}+{:x}", sExeName.c_str(), LoadingArtworkScanResult - (std::uint8_t*)exeModule);
+            static SafetyHookMid LoadingArtworkMidHook{};
+            LoadingArtworkMidHook = safetyhook::create_mid(LoadingArtworkScanResult,
+            [](SafetyHookContext& ctx) {
+                if (fAspectRatio > fNativeAspect)
+                    ctx.xmm0.f32[0] = fHUDWidth;
+            });
+        }
+        else {
+            spdlog::error("HUD: Loading Artwork: Pattern scan failed.");
+        }
+
+        // HUD height
         std::uint8_t* HUDHeightScanResult = Memory::PatternScan(exeModule, "F3 0F ?? ?? ?? 48 8B ?? ?? ?? 48 83 ?? ?? 5F E9 ?? ?? ?? ?? CC 48 83 ?? ??");
         std::uint8_t* MenuHeightScanResult = Memory::PatternScan(exeModule, "0F 28 ?? 48 8B ?? E8 ?? ?? ?? ?? 48 8B ?? 48 8B ?? 48 83 ?? ?? 5B 48 FF ?? ?? ?? ?? ??");
         if (HUDHeightScanResult && MenuHeightScanResult) {
-        spdlog::info("HUD: Height: Address is {:s}+{:x}", sExeName.c_str(), HUDHeightScanResult - (std::uint8_t*)exeModule);
-        static SafetyHookMid HUDHeightMidHook{};
-        HUDHeightMidHook = safetyhook::create_mid(HUDHeightScanResult,
-        [](SafetyHookContext& ctx) {
-            if (fAspectRatio < fNativeAspect)
-                ctx.xmm0.f32[0] = (float)iCurrentResY / (1920.00f / fAspectRatio);
-        });
+            spdlog::info("HUD: Height: Address is {:s}+{:x}", sExeName.c_str(), HUDHeightScanResult - (std::uint8_t*)exeModule);
+            static SafetyHookMid HUDHeightMidHook{};
+            HUDHeightMidHook = safetyhook::create_mid(HUDHeightScanResult,
+            [](SafetyHookContext& ctx) {
+                if (fAspectRatio < fNativeAspect)
+                    ctx.xmm0.f32[0] = (float)iCurrentResY / (1920.00f / fAspectRatio);
+            });
 
-        spdlog::info("HUD: Height: Menu: Address is {:s}+{:x}", sExeName.c_str(), MenuHeightScanResult - (std::uint8_t*)exeModule);
-        static SafetyHookMid MenuHeightMidHook{};
-        MenuHeightMidHook = safetyhook::create_mid(MenuHeightScanResult,
-        [](SafetyHookContext& ctx) {
-            if (fAspectRatio < fNativeAspect)
-                ctx.xmm0.f32[0] = (float)iCurrentResY / (1920.00f / fAspectRatio);            
-        });          
+            spdlog::info("HUD: Height: Menu: Address is {:s}+{:x}", sExeName.c_str(), MenuHeightScanResult - (std::uint8_t*)exeModule);
+            static SafetyHookMid MenuHeightMidHook{};
+            MenuHeightMidHook = safetyhook::create_mid(MenuHeightScanResult,
+            [](SafetyHookContext& ctx) {
+                if (fAspectRatio < fNativeAspect)
+                    ctx.xmm0.f32[0] = (float)iCurrentResY / (1920.00f / fAspectRatio);            
+            });          
         }
         else {
-        spdlog::error("HUD: Height: Pattern scan(s) failed.");
+            spdlog::error("HUD: Height: Pattern scan(s) failed.");
         }
     } 
 }
