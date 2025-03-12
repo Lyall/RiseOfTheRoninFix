@@ -42,6 +42,7 @@ bool bCustomRes;
 int iCustomResX;
 int iCustomResY;
 float fGameplayFOVMulti;
+bool bFixFOV;
 bool bFixMovies;
 
 // Variables
@@ -160,6 +161,7 @@ void Configuration()
     inipp::get_value(ini.sections["Custom Resolution"], "Width", iCustomResX);
     inipp::get_value(ini.sections["Custom Resolution"], "Height", iCustomResY);
     inipp::get_value(ini.sections["Gameplay FOV"], "Multiplier", fGameplayFOVMulti);
+    inipp::get_value(ini.sections["Fix FOV"], "Enabled", bFixFOV);
     inipp::get_value(ini.sections["Fix Movies"], "Enabled", bFixMovies);
 
     // Log ini parse
@@ -167,6 +169,7 @@ void Configuration()
     spdlog_confparse(iCustomResX);
     spdlog_confparse(iCustomResY);
     spdlog_confparse(fGameplayFOVMulti);
+    spdlog_confparse(bFixFOV);
     spdlog_confparse(bFixMovies);
 
     spdlog::info("----------");
@@ -270,6 +273,26 @@ void FOV()
             spdlog::error("Gameplay FOV: Pattern scan failed.");
         }
     }
+
+    if (bFixFOV) 
+    {
+        // Cutscene FOV
+        std::uint8_t* CutsceneFOVScanResult = Memory::PatternScan(exeModule, "E8 ?? ?? ?? ?? 83 ?? 01 75 ?? F3 0F ?? ?? ?? ?? ?? ?? EB ??");
+        std::uint8_t* CutsceneCameraPositionScanResult = Memory::PatternScan(exeModule, "74 ?? 83 ?? FF E8 ?? ?? ?? ?? EB ?? E8 ?? ?? ?? ?? 84 ?? 74 ?? E8 ?? ?? ?? ??");
+        if (CutsceneFOVScanResult && CutsceneCameraPositionScanResult) {
+            spdlog::info("Cutscene FOV: Address is {:s}+{:x}", sExeName.c_str(), CutsceneFOVScanResult - (std::uint8_t*)exeModule);
+            Memory::PatchBytes(CutsceneFOVScanResult + 0x8, "\x90\x90", 2);
+            spdlog::info("Cutscene FOV: Patched instruction.");
+
+            spdlog::info("Cutscene FOV: Position: Address is {:s}+{:x}", sExeName.c_str(), CutsceneCameraPositionScanResult - (std::uint8_t*)exeModule);
+            Memory::PatchBytes(CutsceneCameraPositionScanResult, "\xEB\x53", 2);
+            spdlog::info("Cutscene FOV: Position: Patched instruction.");
+        }
+        else {
+            spdlog::error("Cutscene FOV: Pattern scan(s) failed.");
+        }
+    }
+   
 }
 
 void Movies()
@@ -277,8 +300,7 @@ void Movies()
     if (bFixMovies) 
     {
         // Very cool naming scheme
-        static std::vector<std::string> sNonLetterboxedMovies =
-        {
+        static std::vector<std::string> sNonLetterboxedMovies = {
             "02D0FA5FDB4FA4FEA5D0C1CAAEF8D6CE260EADE39CC753AB7D0C376B55012958",
             "388CDBB2F103BE34D9ECF75D5038A7AF5406F9B40250C3B569D167D851C18189",
             "68C0955A422BF998BB1647D704DBFDAF02C1EAEB5F21CA568BC9B43EB53EBF66",
