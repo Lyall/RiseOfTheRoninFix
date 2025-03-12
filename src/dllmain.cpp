@@ -43,6 +43,7 @@ int iCustomResX;
 int iCustomResY;
 float fGameplayFOVMulti;
 bool bFixFOV;
+bool bFixHUD;
 bool bFixMovies;
 
 // Variables
@@ -162,6 +163,7 @@ void Configuration()
     inipp::get_value(ini.sections["Custom Resolution"], "Height", iCustomResY);
     inipp::get_value(ini.sections["Gameplay FOV"], "Multiplier", fGameplayFOVMulti);
     inipp::get_value(ini.sections["Fix FOV"], "Enabled", bFixFOV);
+    inipp::get_value(ini.sections["Fix HUD"], "Enabled", bFixHUD);
     inipp::get_value(ini.sections["Fix Movies"], "Enabled", bFixMovies);
 
     // Log ini parse
@@ -170,6 +172,7 @@ void Configuration()
     spdlog_confparse(iCustomResY);
     spdlog_confparse(fGameplayFOVMulti);
     spdlog_confparse(bFixFOV);
+    spdlog_confparse(bFixHUD);
     spdlog_confparse(bFixMovies);
 
     spdlog::info("----------");
@@ -334,7 +337,7 @@ void Movies()
             static SafetyHookMid MovieSizeMidHook{};
             MovieSizeMidHook = safetyhook::create_mid(MovieSizeScanResult,
             [](SafetyHookContext& ctx) { 
-                if (fAspectRatio > fNativeAspect) {
+                if (fAspectRatio != fNativeAspect) {
                     if (bLetterboxedMovie)
                         ctx.xmm1.f32[0] = fLetterboxAspect / fNativeAspect;
                     else
@@ -346,7 +349,7 @@ void Movies()
             static SafetyHookMid MovieAspectMidHook{};
             MovieAspectMidHook = safetyhook::create_mid(MovieAspectScanResult - 0x8,
             [](SafetyHookContext& ctx) {
-                if (fAspectRatio > fNativeAspect) {
+                if (fAspectRatio != fNativeAspect) {
                     if (bLetterboxedMovie)
                         ctx.xmm1.f32[0] = fLetterboxAspect;
                     else
@@ -360,6 +363,36 @@ void Movies()
     }  
 }
 
+void HUD()
+{
+    if (bFixHUD) 
+    {
+        // HUD size
+        std::uint8_t* HUDHeightScanResult = Memory::PatternScan(exeModule, "F3 0F ?? ?? ?? 48 8B ?? ?? ?? 48 83 ?? ?? 5F E9 ?? ?? ?? ?? CC 48 83 ?? ??");
+        std::uint8_t* MenuHeightScanResult = Memory::PatternScan(exeModule, "0F 28 ?? 48 8B ?? E8 ?? ?? ?? ?? 48 8B ?? 48 8B ?? 48 83 ?? ?? 5B 48 FF ?? ?? ?? ?? ??");
+        if (HUDHeightScanResult && MenuHeightScanResult) {
+        spdlog::info("HUD: Height: Address is {:s}+{:x}", sExeName.c_str(), HUDHeightScanResult - (std::uint8_t*)exeModule);
+        static SafetyHookMid HUDHeightMidHook{};
+        HUDHeightMidHook = safetyhook::create_mid(HUDHeightScanResult,
+        [](SafetyHookContext& ctx) {
+            if (fAspectRatio < fNativeAspect)
+                ctx.xmm0.f32[0] = (float)iCurrentResY / (1920.00f / fAspectRatio);
+        });
+
+        spdlog::info("HUD: Height: Menu: Address is {:s}+{:x}", sExeName.c_str(), MenuHeightScanResult - (std::uint8_t*)exeModule);
+        static SafetyHookMid MenuHeightMidHook{};
+        MenuHeightMidHook = safetyhook::create_mid(MenuHeightScanResult,
+        [](SafetyHookContext& ctx) {
+            if (fAspectRatio < fNativeAspect)
+                ctx.xmm0.f32[0] = (float)iCurrentResY / (1920.00f / fAspectRatio);            
+        });          
+        }
+        else {
+        spdlog::error("HUD: Height: Pattern scan(s) failed.");
+        }
+    } 
+}
+
 DWORD __stdcall Main(void*)
 {
     Logging();
@@ -368,6 +401,7 @@ DWORD __stdcall Main(void*)
     CurrentResolution();
     FOV();
     Movies();
+    HUD();
 
     return true;
 }
