@@ -41,6 +41,7 @@ float fHUDHeightOffset;
 bool bCustomRes;
 int iCustomResX;
 int iCustomResY;
+float fGameplayFOVMulti;
 bool bFixMovies;
 
 // Variables
@@ -158,12 +159,14 @@ void Configuration()
     inipp::get_value(ini.sections["Custom Resolution"], "Enabled", bCustomRes);
     inipp::get_value(ini.sections["Custom Resolution"], "Width", iCustomResX);
     inipp::get_value(ini.sections["Custom Resolution"], "Height", iCustomResY);
+    inipp::get_value(ini.sections["Gameplay FOV"], "Multiplier", fGameplayFOVMulti);
     inipp::get_value(ini.sections["Fix Movies"], "Enabled", bFixMovies);
 
     // Log ini parse
     spdlog_confparse(bCustomRes);
     spdlog_confparse(iCustomResX);
     spdlog_confparse(iCustomResY);
+    spdlog_confparse(fGameplayFOVMulti);
     spdlog_confparse(bFixMovies);
 
     spdlog::info("----------");
@@ -249,6 +252,26 @@ void CurrentResolution()
     }
 }
 
+void FOV()
+{
+    if (fGameplayFOVMulti != 1.00f) 
+    {
+        // Gameplay FOV
+        std::uint8_t* GameplayFOVScanResult = Memory::PatternScan(exeModule, "F3 0F ?? ?? ?? 48 8B ?? E8 ?? ?? ?? ?? F3 0F ?? ?? ?? ?? ?? ?? 45 ?? ?? ?? F3 44 ?? ?? ?? ?? ?? ?? ??");
+        if (GameplayFOVScanResult) {
+            spdlog::info("Gameplay FOV: Address is {:s}+{:x}", sExeName.c_str(), GameplayFOVScanResult - (std::uint8_t*)exeModule);
+            static SafetyHookMid GameplayFOVMidHook{};
+            GameplayFOVMidHook = safetyhook::create_mid(GameplayFOVScanResult,
+                [](SafetyHookContext& ctx) {
+                    ctx.xmm0.f32[0] *= fGameplayFOVMulti;
+                });
+        }
+        else {
+            spdlog::error("Gameplay FOV: Pattern scan failed.");
+        }
+    }
+}
+
 void Movies()
 {
     if (bFixMovies) 
@@ -321,6 +344,7 @@ DWORD __stdcall Main(void*)
     Configuration();
     CustomResolution();
     CurrentResolution();
+    FOV();
     Movies();
 
     return true;
