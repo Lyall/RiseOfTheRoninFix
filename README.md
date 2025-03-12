@@ -7,7 +7,7 @@
 - Add support for custom resolutions.
 - Adjust gameplay FOV.
 - Fix cropped FMV sequences.
-- Fix various issues related to running unsupported aspect ratios.
+- Fix various issues related to running at unsupported aspect ratios.
 
 ## Installation  
 - Download the latest release from [here](https://github.com/Lyall/RiseOfTheRoninFix/releases). 
