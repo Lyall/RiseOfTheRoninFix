@@ -400,6 +400,22 @@ void HUD()
         else {
             spdlog::error("HUD: Height: Pattern scan(s) failed.");
         }
+
+        // Cutscene letterboxing
+        std::uint8_t* CutsceneLetterboxingScanResult = Memory::PatternScan(exeModule, "34 01 48 8D ?? ?? ?? 44 ?? ?? 48 8D ?? ?? ?? E8 ?? ?? ?? ?? 4C ?? ?? ?? ??");
+        if (CutsceneLetterboxingScanResult) {
+            spdlog::info("HUD: Cutscene Letterboxing: Address is {:s}+{:x}", sExeName.c_str(), CutsceneLetterboxingScanResult - (std::uint8_t*)exeModule);
+            static SafetyHookMid CutsceneLetterboxingMidHook{};
+            CutsceneLetterboxingMidHook = safetyhook::create_mid(CutsceneLetterboxingScanResult,
+            [](SafetyHookContext& ctx) {
+                // Disable letterboxing at <16:9
+                if (fAspectRatio < fNativeAspect)
+                    ctx.rax = (ctx.rax & ~0xFF) | 0x01;
+            });
+        }
+        else {
+            spdlog::error("HUD: Cutscene Letterboxing: Pattern scan failed.");
+        }        
     } 
 }
 
