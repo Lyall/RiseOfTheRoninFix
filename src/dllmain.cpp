@@ -377,21 +377,6 @@ void HUD()
 {
     if (bFixHUD) 
     {
-        // Cropped loading screen artwork
-        std::uint8_t* LoadingArtworkScanResult = Memory::PatternScan(exeModule, "0F 28 ?? 41 ?? ?? C1 ?? ?? 66 ?? ?? ?? ?? F3 0F ?? ?? 66 ?? ?? ?? ?? 40 ?? ?? 74 ??");
-        if (LoadingArtworkScanResult ) {
-            spdlog::info("HUD: Loading Artwork: Address is {:s}+{:x}", sExeName.c_str(), LoadingArtworkScanResult - (std::uint8_t*)exeModule);
-            static SafetyHookMid LoadingArtworkMidHook{};
-            LoadingArtworkMidHook = safetyhook::create_mid(LoadingArtworkScanResult,
-            [](SafetyHookContext& ctx) {
-                if (fAspectRatio > fNativeAspect)
-                    ctx.xmm0.f32[0] = fHUDWidth;
-            });
-        }
-        else {
-            spdlog::error("HUD: Loading Artwork: Pattern scan failed.");
-        }
-
         // HUD height
         std::uint8_t* HUDHeightScanResult = Memory::PatternScan(exeModule, "F3 0F ?? ?? ?? 48 8B ?? ?? ?? 48 83 ?? ?? 5F E9 ?? ?? ?? ?? CC 48 83 ?? ??");
         std::uint8_t* MenuHeightScanResult = Memory::PatternScan(exeModule, "0F 28 ?? 48 8B ?? E8 ?? ?? ?? ?? 48 8B ?? 48 8B ?? 48 83 ?? ?? 5B 48 FF ?? ?? ?? ?? ??");
