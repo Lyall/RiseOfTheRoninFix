@@ -46,7 +46,7 @@ bool bFixFOV;
 bool bFixHUD;
 bool bFixMovies;
 bool bAdjustFramerate;
-int iFramerateCap;
+int iFramerateTarget;
 
 // Variables
 const float fLetterboxAspect = 2.35f;
@@ -168,7 +168,7 @@ void Configuration()
     inipp::get_value(ini.sections["Fix HUD"], "Enabled", bFixHUD);
     inipp::get_value(ini.sections["Fix Movies"], "Enabled", bFixMovies);
     inipp::get_value(ini.sections["Framerate"], "Enabled", bAdjustFramerate);
-    inipp::get_value(ini.sections["Framerate"], "FramerateCap", iFramerateCap);
+    inipp::get_value(ini.sections["Framerate"], "FramerateTarget", iFramerateTarget);
 
     // Log ini parse
     spdlog_confparse(bCustomRes);
@@ -179,7 +179,7 @@ void Configuration()
     spdlog_confparse(bFixHUD);
     spdlog_confparse(bFixMovies);
     spdlog_confparse(bAdjustFramerate);
-    spdlog_confparse(iFramerateCap);
+    spdlog_confparse(iFramerateTarget);
 
     spdlog::info("----------");
 }
@@ -443,6 +443,44 @@ void HUD()
         else {
             spdlog::error("HUD: Height: Pattern scan(s) failed.");
         }
+
+        // HUD Objects
+        std::uint8_t* HUDObjectsScanResult = Memory::PatternScan(exeModule, "4D ?? ?? 74 ?? 41 ?? ?? ?? F3 0F ?? ?? ?? ?? ?? ?? 41 ?? 01 00 00 00");
+        if (HUDObjectsScanResult) {
+            static std::string sHUDObjectName;
+            static short iHUDObjectX;
+            static short iHUDObjectY;
+
+            spdlog::info("HUD: Objects: Address is {:s}+{:x}", sExeName.c_str(), HUDObjectsScanResult - (std::uint8_t*)exeModule);
+            static SafetyHookMid HUDObjectsMidHook{};
+            HUDObjectsMidHook = safetyhook::create_mid(HUDObjectsScanResult,
+                [](SafetyHookContext& ctx) {
+                    if (ctx.rdx) {
+                        sHUDObjectName = (char*)(ctx.rdx - 0x10);
+                        iHUDObjectX = *reinterpret_cast<short*>(ctx.rdx + 0xF0);
+                        iHUDObjectY = *reinterpret_cast<short*>(ctx.rdx + 0xF2);
+
+                        // Stealth vignette
+                        if (sHUDObjectName.contains("Null_item_list") && iHUDObjectX == 5000 && iHUDObjectY == 2400) {
+                            if (fAspectRatio > 3.55f)
+                                ctx.rax = (static_cast<uintptr_t>(iHUDObjectY) << 16) | (short)ceilf(iHUDObjectY * fAspectRatio);
+                            else if (fAspectRatio < fNativeAspect)
+                                ctx.rax = (static_cast<uintptr_t>((short)ceilf(iHUDObjectX / fAspectRatio)) << 16) | iHUDObjectX;
+                        }
+
+                        // Stealth vignette inner
+                        if (sHUDObjectName.contains("Blur") && iHUDObjectX == 4000 && iHUDObjectY == 2200) {
+                            if (fAspectRatio > 3.55f)
+                                ctx.rax = (static_cast<uintptr_t>(iHUDObjectY) << 16) | (short)ceilf(iHUDObjectY * fAspectRatio);
+                            else if (fAspectRatio < fNativeAspect)
+                                ctx.rax = (static_cast<uintptr_t>((short)ceilf(iHUDObjectX / fAspectRatio)) << 16) | iHUDObjectX;
+                        }
+                    }
+                });
+        }
+        else {
+            spdlog::error("HUD Objects: Pattern scan failed.");
+        }
     } 
 }
 
@@ -450,18 +488,18 @@ void Framerate()
 {
     if (bAdjustFramerate) 
     {
-        // Framerate cap
-        std::uint8_t* FramerateCapScanResult = Memory::PatternScan(exeModule, "48 83 ?? 03 73 ?? 8B ?? ?? EB ?? 8B ?? 48 8B ?? ?? ?? 48 33 ?? E8 ?? ?? ?? ?? 48 83 ?? ?? C3");
-        if (FramerateCapScanResult) {
-            spdlog::info("Framerate: Cap: Address is {:s}+{:x}", sExeName.c_str(), FramerateCapScanResult - (std::uint8_t*)exeModule);
-            static SafetyHookMid FramerateCapMidHook{};
-            FramerateCapMidHook = safetyhook::create_mid(FramerateCapScanResult + 0xD,
+        // Framerate target
+        std::uint8_t* FramerateTargetScanResult = Memory::PatternScan(exeModule, "48 83 ?? 03 73 ?? 8B ?? ?? EB ?? 8B ?? 48 8B ?? ?? ?? 48 33 ?? E8 ?? ?? ?? ?? 48 83 ?? ?? C3");
+        if (FramerateTargetScanResult) {
+            spdlog::info("Framerate: Target: Address is {:s}+{:x}", sExeName.c_str(), FramerateTargetScanResult - (std::uint8_t*)exeModule);
+            static SafetyHookMid FramerateTargetMidHook{};
+            FramerateTargetMidHook = safetyhook::create_mid(FramerateTargetScanResult + 0xD,
             [](SafetyHookContext& ctx) {
-                ctx.rax = iFramerateCap;
+                ctx.rax = iFramerateTarget;
             });       
         }
         else {
-            spdlog::error("Framerate: Cap: Pattern scan failed.");
+            spdlog::error("Framerate: Target: Pattern scan failed.");
         }
     }
 }
