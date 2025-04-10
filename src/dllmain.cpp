@@ -13,7 +13,7 @@ HMODULE thisModule;
 
 // Fix details
 std::string sFixName = "RiseOfTheRoninFix";
-std::string sFixVersion = "0.0.3";
+std::string sFixVersion = "0.0.4";
 std::filesystem::path sFixPath;
 
 // Ini
@@ -245,15 +245,15 @@ void CustomResolution()
 void CurrentResolution()
 {
     // Current resolution
-    std::uint8_t* CurrentResolutionScanResult = Memory::PatternScan(exeModule, "49 89 ?? ?? ?? ?? ?? 41 8B ?? ?? ?? ?? ?? ?? 41 89 ?? ?? ?? ?? ?? 4B ?? ?? ?? 49 89 ?? ?? ?? ?? ??");
+    std::uint8_t* CurrentResolutionScanResult = Memory::PatternScan(exeModule, "F3 41 ?? ?? ?? ?? ?? ?? ?? ?? 48 89 ?? ?? ?? ?? ?? 48 89 ?? ?? ?? ?? ?? 4B 8D ?? ?? 48 8D ?? ?? ?? ?? ?? ??");
     if (CurrentResolutionScanResult) {
         spdlog::info("Current Resolution: Address is {:s}+{:x}", sExeName.c_str(), CurrentResolutionScanResult - (std::uint8_t*)exeModule);
         static SafetyHookMid CurrentResolutionMidHook{};
         CurrentResolutionMidHook = safetyhook::create_mid(CurrentResolutionScanResult,
             [](SafetyHookContext& ctx) {
                   // Get current resolution
-                  int iResX = static_cast<int>(ctx.rcx & 0xFFFFFFFF);
-                  int iResY = static_cast<int>((ctx.rcx >> 32) & 0xFFFFFFFF);
+                  int iResX = static_cast<int>(ctx.rax & 0xFFFFFFFF);
+                  int iResY = static_cast<int>((ctx.rax >> 32) & 0xFFFFFFFF);
   
                   // Log resolution
                   if (iResX != iCurrentResX || iResY != iCurrentResY) {
@@ -316,8 +316,14 @@ void Movies()
         static std::vector<std::string> sNonLetterboxedMovies = {
             "02D0FA5FDB4FA4FEA5D0C1CAAEF8D6CE260EADE39CC753AB7D0C376B55012958",
             "388CDBB2F103BE34D9ECF75D5038A7AF5406F9B40250C3B569D167D851C18189",
+            "08C932E70CE02F2B48BA6579FCA31D73AC6B7230F195218DDDDD9BCFBC8FF4F0"
             "68C0955A422BF998BB1647D704DBFDAF02C1EAEB5F21CA568BC9B43EB53EBF66",
             "F11D39AF90D578381099BAE062CB35BE9BDBB339B67AAAF5CBC48FBFE5F59A37",
+            "67C1ADBB6461C42C59A54C1BC6533A27785FF46A36C469DABF4A9A3EC5DFDA3A",
+            "11DB058DE7CD93BDED78C4933EF08E68092224295DE57E6B9805393672AF139A",
+            "ABE0CE5E6E6097243D049DDF8695A844892A9FF77275DBCA50CE780626C0A868",
+            "F0E197F67E8141731CC040CF3D8347231830A2655BC7D2961B067FA7A94E1F39",
+            "6097B1C9F05C8E2DAE8057497482F1FBA08DE9D0FA514E3174910AB74C4E5B11"
         };
 
         // Movie name
@@ -484,26 +490,6 @@ void HUD()
     } 
 }
 
-void Framerate()
-{
-    if (bAdjustFramerate) 
-    {
-        // Framerate target
-        std::uint8_t* FramerateTargetScanResult = Memory::PatternScan(exeModule, "48 83 ?? 03 73 ?? 8B ?? ?? EB ?? 8B ?? 48 8B ?? ?? ?? 48 33 ?? E8 ?? ?? ?? ?? 48 83 ?? ?? C3");
-        if (FramerateTargetScanResult) {
-            spdlog::info("Framerate: Target: Address is {:s}+{:x}", sExeName.c_str(), FramerateTargetScanResult - (std::uint8_t*)exeModule);
-            static SafetyHookMid FramerateTargetMidHook{};
-            FramerateTargetMidHook = safetyhook::create_mid(FramerateTargetScanResult + 0xD,
-            [](SafetyHookContext& ctx) {
-                ctx.rax = iFramerateTarget;
-            });       
-        }
-        else {
-            spdlog::error("Framerate: Target: Pattern scan failed.");
-        }
-    }
-}
-
 DWORD __stdcall Main(void*)
 {
     Logging();
@@ -513,7 +499,6 @@ DWORD __stdcall Main(void*)
     FOV();
     Movies();
     HUD();
-    Framerate();
 
     return true;
 }
