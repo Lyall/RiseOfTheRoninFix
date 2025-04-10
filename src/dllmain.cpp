@@ -45,8 +45,6 @@ float fGameplayFOVMulti;
 bool bFixFOV;
 bool bFixHUD;
 bool bFixMovies;
-bool bAdjustFramerate;
-int iFramerateTarget;
 
 // Variables
 const float fLetterboxAspect = 2.35f;
@@ -167,8 +165,6 @@ void Configuration()
     inipp::get_value(ini.sections["Fix FOV"], "Enabled", bFixFOV);
     inipp::get_value(ini.sections["Fix HUD"], "Enabled", bFixHUD);
     inipp::get_value(ini.sections["Fix Movies"], "Enabled", bFixMovies);
-    inipp::get_value(ini.sections["Framerate"], "Enabled", bAdjustFramerate);
-    inipp::get_value(ini.sections["Framerate"], "FramerateTarget", iFramerateTarget);
 
     // Log ini parse
     spdlog_confparse(bCustomRes);
@@ -178,8 +174,6 @@ void Configuration()
     spdlog_confparse(bFixFOV);
     spdlog_confparse(bFixHUD);
     spdlog_confparse(bFixMovies);
-    spdlog_confparse(bAdjustFramerate);
-    spdlog_confparse(iFramerateTarget);
 
     spdlog::info("----------");
 }
